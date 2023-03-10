@@ -20,7 +20,6 @@ pub fn args() -> Vec<OsString> {
         None => return vec![],
         Some(config_path) => config_path,
     };
-
     let (args, errs) = match parse(&config_path) {
         Ok((args, errs)) => (args, errs),
         Err(err) => {
@@ -31,7 +30,6 @@ pub fn args() -> Vec<OsString> {
             return vec![];
         }
     };
-
     if !errs.is_empty() {
         for err in errs {
             message!("{}:{}", config_path.display(), err);
@@ -56,11 +54,11 @@ fn config_path() -> Option<PathBuf> {
     }
 
     let env_opt = env_ripgreprc();
-    if env_opt.is_some()  {
+    if env_opt.is_some() {
         return env_opt;
     }
 
-    return find_ripgreprc();
+    find_ripgreprc()
 }
 
 /// if there is a ripgreprc in the cwd, get it
@@ -69,23 +67,21 @@ fn cwd_ripgreprc() -> Option<PathBuf> {
     let file = Path::new(".ripgreprc");
 
     cwd.push(file);
-
     if cwd.is_file() {
         return Some(cwd);
     }
-
     None
 }
 
 /// if we have a ripgreprc specified in env, get it
-fn env_ripgreprc() -> Option<PathBuf> { 
+fn env_ripgreprc() -> Option<PathBuf> {
     match env::var_os("RIPGREP_CONFIG_PATH") {
         None => None,
         Some(config_path) => {
             if config_path.is_empty() {
-                return None;
+                None
             } else {
-                return Some(PathBuf::from(config_path));
+                Some(PathBuf::from(config_path))
             }
         }
     }
