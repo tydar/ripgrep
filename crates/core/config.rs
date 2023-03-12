@@ -16,20 +16,16 @@ use crate::Result;
 
 /// Return a sequence of arguments derived from ripgrep rc configuration files.
 pub fn args() -> Vec<OsString> {
-    let config_path = match env::var_os("RIPGREP_CONFIG_PATH") {
+    let config_path = match config_path() {
         None => return vec![],
-        Some(config_path) => {
-            if config_path.is_empty() {
-                return vec![];
-            }
-            PathBuf::from(config_path)
-        }
+        Some(config_path) => config_path,
     };
     let (args, errs) = match parse(&config_path) {
         Ok((args, errs)) => (args, errs),
         Err(err) => {
             message!(
-                "failed to read the file specified in RIPGREP_CONFIG_PATH: {}",
+                "failed to read the configuration file at {}: {}",
+                config_path.display(),
                 err
             );
             return vec![];
@@ -46,6 +42,74 @@ pub fn args() -> Vec<OsString> {
         args
     );
     args
+}
+
+/// returns the path of a config file in this precedence
+/// 1) cwd
+/// 2) env specified
+/// 3) somewhere up the tree from cwd
+fn config_path() -> Option<PathBuf> {
+    let cwd_opt = cwd_ripgreprc();
+    if cwd_opt.is_some() {
+        return cwd_opt;
+    }
+
+    let env_opt = env_ripgreprc();
+    if env_opt.is_some() {
+        return env_opt;
+    }
+
+    find_ripgreprc()
+}
+
+/// if there is a ripgreprc in the cwd, get it
+fn cwd_ripgreprc() -> Option<PathBuf> {
+    let mut cwd = env::current_dir().unwrap();
+    let file = Path::new(".ripgreprc");
+
+    cwd.push(file);
+    if cwd.is_file() {
+        return Some(cwd);
+    }
+    None
+}
+
+/// if we have a ripgreprc specified in env, get it
+fn env_ripgreprc() -> Option<PathBuf> {
+    match env::var_os("RIPGREP_CONFIG_PATH") {
+        None => None,
+        Some(config_path) => {
+            if config_path.is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(config_path))
+            }
+        }
+    }
+}
+
+/// Find a .ripgreprc file in the tree
+/// Found this snippet here: https://codereview.stackexchange.com/a/236771
+fn find_ripgreprc() -> Option<PathBuf> {
+    let mut search_path = env::current_dir().unwrap();
+    let file = Path::new(".ripgreprc");
+
+    // go up one, since we know it's not in the current folder already
+    if !search_path.pop() {
+        return None;
+    }
+
+    loop {
+        search_path.push(file);
+
+        if search_path.is_file() {
+            break Some(search_path);
+        }
+
+        if !(search_path.pop() && search_path.pop()) {
+            break None;
+        }
+    }
 }
 
 /// Parse a single ripgrep rc file from the given path.
