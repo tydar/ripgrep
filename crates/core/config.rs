@@ -24,7 +24,8 @@ pub fn args() -> Vec<OsString> {
         Ok((args, errs)) => (args, errs),
         Err(err) => {
             message!(
-                "failed to read the file specified in RIPGREP_CONFIG_PATH: {}",
+                "failed to read the configuration file at {}: {}",
+                config_path.display(),
                 err
             );
             return vec![];
@@ -88,6 +89,7 @@ fn env_ripgreprc() -> Option<PathBuf> {
 }
 
 /// Find a .ripgreprc file in the tree
+/// Found this snippet here: https://codereview.stackexchange.com/a/236771
 fn find_ripgreprc() -> Option<PathBuf> {
     let mut search_path = env::current_dir().unwrap();
     let file = Path::new(".ripgreprc");
